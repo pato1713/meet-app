@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+  <script>
+    const socket = io();
+
+    async function fetchNewRoomID(socketId){
+      const result = await fetch("/api/room");
+        const newDiv = document.createElement('div');
+
+        const roomID = await result.text()
+        newDiv.textContent = `Your room id is: ${roomID}`
+
+        document.body.append(newDiv)
+        fetch("/api/join-room", {
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            socketId: socketId,
+            roomId: roomID
+        })})
+    }
+    
+    socket.on('connect', ()=>{
+      fetchNewRoomID(socket.id)
+    })
+  
+  </script>
+</body>
+</html>
