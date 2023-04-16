@@ -16,9 +16,8 @@ module.exports = {
     port: process.env.CLIENT_PORT,
     proxy: {
       "/api": {
-        target: `http://localhost:${process.env.DOCKER_SERVER_PORT_FORWARD}`,
+        target: `http://${process.env.SERVER_CONTAINER_NAME}:${process.env.SERVER_PORT}`,
         pathRewrite: { "^/api": "" },
-        secure: false,
       },
     },
   },
