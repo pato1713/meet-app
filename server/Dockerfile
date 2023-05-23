@@ -3,16 +3,12 @@
 # ---------------------------------------
 FROM node:18 AS development
 WORKDIR /node
-
 COPY package*.json tsconfig.json ./
-
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
-
 RUN npm install
-
 WORKDIR /node/app
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
 
 # ---------------------------------------
 # Production stage

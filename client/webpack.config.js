@@ -25,11 +25,11 @@ module.exports = {
       },
     },
   },
-  // to make hot reloading work with docker
-  watchOptions: {
-    aggregateTimeout: 200,
-    poll: true,
-  },
+  // // to make hot reloading work with docker
+  // watchOptions: {
+  //   aggregateTimeout: 200,
+  //   poll: true,
+  // },
   devtool: "source-map",
   module: {
     rules: [

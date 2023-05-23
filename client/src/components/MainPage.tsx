@@ -9,22 +9,16 @@ const MainPage = () => {
   const { navigate } = useContext(RoutingContext);
 
   const createRoomHandler = async () => {
-    // const response = await axios.post<string>("/api/create-room", {
-    //   socketId: webRTCService.socket.id,
-    // });
-    // if (response.status === 200) {
-    //   setNewRoomId(response.data);
-    //   navigate("/meeting");
-    // }
-    navigate("/meeting");
+    const result = await webRTCService.createRoom();
+    if (typeof result === "string") {
+      setNewRoomId(result);
+      navigate("/meeting");
+    }
   };
 
   const joinRoomHandler = async () => {
-    const response = await axios.post("/api/join-room", {
-      roomId: inputValue,
-      socketId: webRTCService.socket.id,
-    });
-    if (response.status === 200) {
+    const result = await webRTCService.joinRoom(inputValue);
+    if (result === "join-room-ack") {
       setNewRoomId(inputValue);
       navigate("/meeting");
     }
@@ -39,7 +33,13 @@ const MainPage = () => {
     <div>
       <div className="left">
         <div>
-          <button onClick={createRoomHandler}>Create room</button>
+          <button
+            onClick={() => {
+              createRoomHandler();
+            }}
+          >
+            Create room
+          </button>
         </div>
       </div>
       <div className="right">

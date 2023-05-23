@@ -11,120 +11,107 @@ const rtcConfig = {
   iceServers: [{ urls: "stun:stunserver.org" }],
 };
 
+class PeerConnection {
+  targetSocketId: string;
+  connection: RTCPeerConnection;
+  offerInProgress: boolean;
+  socket: Socket;
+
+  constructor(
+    id: string,
+    socket: Socket,
+    handleVideoCallback: (stream: MediaStream) => void
+  ) {
+    this.targetSocketId = id;
+    this.connection = new RTCPeerConnection(rtcConfig);
+    this.socket = socket;
+    this.connection.addEventListener(
+      "negotiationneeded",
+      this.negotiationEndHandler
+    );
+    this.connection.addEventListener("icecandidate", this.iceCandidateHandler);
+
+    // handle incoming connection
+    this.connection.ontrack = ({ track, streams }) => {
+      track.onunmute = () => {
+        handleVideoCallback(streams[0]);
+      };
+    };
+  }
+
+  negotiationEndHandler = async () => {
+    this.offerInProgress = true;
+    const offer = await this.connection.createOffer();
+    await this.connection.setLocalDescription(offer);
+
+    this.socket.emit("sdp-offer", JSON.stringify({ description: offer }));
+
+    this.offerInProgress = false;
+  };
+
+  iceCandidateHandler = ({ candidate }: any) => {
+    this.socket.emit("ice-candidate", JSON.stringify(candidate));
+  };
+}
+
 class WebRTCService {
   socket: Socket;
-  outputConnection: RTCPeerConnection;
-  inputConnections: Map<string, RTCPeerConnection>;
+  connections: Map<string, PeerConnection>;
   makingOfferInProgress: boolean;
   handleRemoteConnectionCallback: (stream: MediaStream) => void;
 
   constructor() {
     this.socket = io();
     this.makingOfferInProgress = false;
+    this.connections = new Map();
     this.handleRemoteConnectionCallback = null;
-    this.inputConnections = new Map();
-    this.socket.on("connect", this.createRoom);
-    this.socket.on("create-room-ack", () => {
-      this.startListeners();
-    });
+    this.socket.on("connect", this.createListeners);
   }
 
-  // startConnection = () => {
-  //   if (this.socket.connected) this.startListeners();
-  // };
-
-  startListeners = () => {
-    console.log("IO Socket connected");
-    this.outputConnection = new RTCPeerConnection(rtcConfig);
-
-    this.socket.on(
-      "sdp-ack-input",
-      async (description: RTCSessionDescription) => {
-        if (
-          description.type === "offer" &&
-          this.makingOfferInProgress &&
-          this.outputConnection.signalingState !== "stable"
-        ) {
-          console.error("Making offer conflict");
-          return;
-        }
-
-        await this.outputConnection.setRemoteDescription(description);
-
-        if (description.type === "offer") {
-          await this.outputConnection.setLocalDescription();
-        }
-      }
-    );
+  createListeners = () => {
+    this.socket.on("new-user", (socket) => {
+      this.startNewConnection(socket.id);
+    });
 
     //get ice-candidate from remote peers
-    this.socket.on("ice-candidate-cilent", (candidate: RTCIceCandidate) => {
-      this.outputConnection.addIceCandidate(candidate);
+    this.socket.on("ice-candidate", ({ candidate, socketId }) => {
+      const peer = this.connections.get(socketId);
+      peer && peer.connection.addIceCandidate(candidate);
     });
 
-    this.outputConnection.addEventListener("negotiationneeded", async () => {
-      this.makingOfferInProgress = true;
-      const offer = await this.outputConnection.createOffer();
-      await this.outputConnection.setLocalDescription(offer);
-
-      this.socket.emit("sdp-input", JSON.stringify({ description: offer }));
-
-      this.makingOfferInProgress = false;
+    this.socket.on("sdp-offer", ({ description, socketId }) => {
+      const peer = this.connections.get(socketId);
+      if (peer) {
+        peer.connection.setRemoteDescription(description);
+        peer.connection.ontrack = (track) => {
+          console.log("track", track);
+        };
+      }
     });
+  };
 
-    // send ice candidate to the server that will pass it to the remote peer
-    this.outputConnection.addEventListener("icecandidate", ({ candidate }) => {
-      this.socket.emit("ice-candidate", JSON.stringify(candidate));
+  startNewConnection = (id: string) => {
+    const newConnection = new PeerConnection(id, this.socket, (stream) => {
+      console.log("stream", stream);
     });
-
-    // handle incoming connection
-    this.outputConnection.ontrack = ({ track, streams }) => {
-      track.onunmute = () => {
-        this.handleRemoteConnectionCallback(streams[0]);
-      };
-    };
-
-    this.socket.on("sdp-client", async ({ description, userSocketId }) => {
-      const newConn = new RTCPeerConnection(rtcConfig);
-      this.inputConnections.set(this.socket.id + userSocketId, newConn);
-
-      // callback that will create new video element for us and will return reference to it
-      // const newVideoRef = callbackCreatingVideoRef();
-
-      newConn.onicecandidate = (ev) => {
-        this.socket.emit("ice-candidate-client", {
-          candidate: ev.candidate,
-          userId: userSocketId,
-        });
-      };
-
-      await newConn.setRemoteDescription(description);
-      const localSdp = await newConn.createAnswer({
-        offerToReceiveAudio: false,
-        offerToReceiveVideo: false,
-      });
-      await newConn.setLocalDescription(localSdp);
-
-      this.socket.emit("sdp-client-ack", JSON.stringify(localSdp));
-
-      newConn.ontrack = (e) => {
-        const stream = e.streams[0];
-        stream.getTracks().forEach((track) => {
-          // newVideoRef.addTrck(track); //TODO!!s
-        });
-      };
-    });
+    this.connections.set(id, newConnection);
   };
 
   createRoom = () => {
-    if (this.socket.connected) {
-      this.socket.emit("create-room");
-    }
+    const result = this.socket.emitWithAck("create-room");
+    return result;
   };
 
-  addTrack(track: MediaStreamTrack, stream: MediaStream) {
-    this.outputConnection && this.outputConnection.addTrack(track, stream);
-  }
+  joinRoom = (roomId: string) => {
+    const result = this.socket.emitWithAck("join-room", roomId);
+    return result;
+  };
+
+  addTrack = (track: MediaStreamTrack, stream: MediaStream) => {
+    for (const peer of Array.from(this.connections.values())) {
+      peer.connection.addTrack(track, stream);
+    }
+  };
 }
 
 export default WebRTCService;

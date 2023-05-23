@@ -129,82 +129,47 @@ class IOServer {
   }
 
   onNewSocketConnection(socket: Socket) {
-    socket.on("create-room", () => {
-      const newRoom = new ChatRoom();
-
-      this.rooms.set(newRoom.id, newRoom);
-      this.roomMapping.set(socket.id, newRoom.id);
+    socket.on("create-room", (callback) => {
+      const newRoomId = v4().replace(/-/g, "");
 
       //join room
-      socket.join(newRoom.id);
+      socket.join(newRoomId);
+      this.roomMapping.set(socket.id, newRoomId);
 
-      socket.emit("create-room-ack", "success");
+      callback(newRoomId);
     });
 
-    socket.on("join-room", (data: any) => {
-      const roomId = this.roomMapping.get(socket.id);
-      if (roomId) {
-        const room = this.rooms.get(roomId);
-        if (room) {
-          for (const targetSocketId of room.inputConnections.keys()) {
-            const tempSocket = this.server.sockets.sockets.get(targetSocketId);
-            tempSocket && room.addNewOutputConnection(tempSocket, socket.id);
-            room.addNewOutputConnection(socket, targetSocketId);
-          }
-        }
-      }
+    socket.on("join-room", (roomId: string, callback) => {
+      socket.join(roomId);
+      this.roomMapping.set(socket.id, roomId);
+      socket.to(roomId).emit("new-user", socket.id);
+
+      callback("join-room-ack");
     });
 
     socket.on("leave-room", () => {});
 
-    socket.on("sdp", (data: string) => {
+    socket.on("sdp-offer", (data: string) => {
       const sdpData = JSON.parse(data) as {
         description: RTCSessionDescription;
       };
 
       const roomId = this.roomMapping.get(socket.id);
-      if (roomId) {
-        const room = this.rooms.get(roomId);
-        if (room && sdpData.description.type === "offer") {
-          room.addNewInputConnection(socket, sdpData.description);
-        }
-      }
-      if (roomId) this.server.to(roomId).emit("session-desciption", data);
-    });
-
-    socket.on("sdp-client-ack", (data: string) => {
-      const { description, userId } = JSON.parse(data);
-      const roomId = this.roomMapping.get(socket.id);
-
-      if (roomId) {
-        const room = this.rooms.get(roomId);
-        if (room) {
-          room?.setRemoteDescription(socket.id + userId, description);
-        }
-      }
+      roomId &&
+        socket
+          .to(roomId)
+          .emit("sdp-offer", { description: sdpData, socketId: socket.id });
     });
 
     socket.on("ice-candidate", (data: string) => {
       const iceCandidate = JSON.parse(data);
       const roomId = this.roomMapping.get(socket.id);
 
-      if (roomId) {
-        const room = this.rooms.get(roomId);
-        if (room) {
-          room?.addIceCandidateInput(socket.id, iceCandidate);
-        }
-      }
-    });
-    socket.on("ice-candidate-client", (data: string) => {
-      const { candidate, userId } = JSON.parse(data);
-      const roomId = this.roomMapping.get(socket.id);
-
-      if (roomId) {
-        const room = this.rooms.get(roomId);
-        if (room) {
-          room?.addIceCandidateOutput(socket.id + userId, candidate);
-        }
-      }
+      roomId &&
+        socket.to(roomId).emit("ice-candidate", {
+          candidate: iceCandidate,
+          socketId: socket.id,
+        });
     });
   }
 }
