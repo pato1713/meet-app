@@ -149,16 +149,18 @@ class IOServer {
 
     socket.on("leave-room", () => {});
 
-    socket.on("sdp-offer", (data: string) => {
-      const sdpData = JSON.parse(data) as {
-        description: RTCSessionDescription;
-      };
-
+    socket.on("sdp-offer", (data: RTCSessionDescription) => {
       const roomId = this.roomMapping.get(socket.id);
       roomId &&
         socket
           .to(roomId)
-          .emit("sdp-offer", { description: sdpData, socketId: socket.id });
+          .emit("sdp-offer", { description: data, socketId: socket.id });
+    });
+
+    socket.on("sdp-answer", (data: { answer: any; target: string }) => {
+      this.server.sockets.sockets
+        .get(data.target)
+        ?.emit("sdp-answer", { description: data.answer, socketId: socket.id });
     });
 
     socket.on("ice-candidate", (data: string) => {
