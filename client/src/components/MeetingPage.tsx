@@ -3,48 +3,51 @@ import { ConnectionContext } from "../providers/ConnectionProvider";
 
 const MeetingPage: React.FC = () => {
   const ownVideo = useRef<HTMLVideoElement>();
-  const remoteVideo = useRef<HTMLVideoElement>();
   const videoContainer = useRef<HTMLDivElement>();
-
+  const remoteVideosContainer = useRef<HTMLDivElement>();
   const { roomId, webRTCService } = useContext(ConnectionContext);
 
-  async function start() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: true,
-    });
-    ownVideo.current.muted = true;
-    ownVideo.current.srcObject = stream;
-
-    // add stream tracks to the webRTCService
-    for (const track of stream.getTracks()) {
-      webRTCService.addTrack(track, stream);
-    }
-
-    ownVideo.current.addEventListener("loadedmetadata", () => {
-      ownVideo.current.play();
-    });
-
-    return stream;
-  }
-
   useEffect(() => {
-    // create callback
-    webRTCService.handleRemoteConnectionCallback = (stream) => {
-      if (!remoteVideo.current.srcObject) {
-        remoteVideo.current.srcObject = stream;
+    webRTCService.handleRemoteConnectionCallback = (stream, connId) => {
+      if (!remoteVideosContainer.current) {
+        return;
+      }
+
+      let nodeAlreadyExist = false;
+      for (const node of Array.from(remoteVideosContainer.current.children)) {
+        const videoElem = node as HTMLVideoElement;
+        if (videoElem.id == connId) {
+          nodeAlreadyExist = true;
+          videoElem.srcObject = stream;
+          break;
+        }
+      }
+
+      if (!nodeAlreadyExist) {
+        const newVideo = document.createElement("video");
+        newVideo.id = connId;
+        newVideo.autoplay = true;
+        newVideo.srcObject = stream;
+        remoteVideosContainer.current.append(newVideo);
       }
     };
-
-    start();
   }, []);
+
+  useEffect(() => {
+    if (webRTCService.stream) {
+      ownVideo.current.muted = true;
+      ownVideo.current.srcObject = webRTCService.stream;
+    }
+  }, [webRTCService.stream]);
 
   return (
     <div>
       <div>{roomId}</div>
-      <div className="video" ref={videoContainer}>
-        <video ref={ownVideo} />
-        <video ref={remoteVideo} />
+      <div ref={videoContainer}>
+        <div className="your-video">
+          <video ref={ownVideo} autoPlay />
+        </div>
+        <div className="remote-videos" ref={remoteVideosContainer}></div>
       </div>
     </div>
   );

@@ -1,12 +1,5 @@
 import { Socket, io } from "socket.io-client";
 
-const stunServers = [
-  "stun1.l.google.com:19302",
-  "stun2.l.google.com:19302",
-  "stun3.l.google.com:19302",
-  "stun4.l.google.com:19302",
-];
-
 const rtcConfig = {
   iceServers: [{ urls: "stun:stunserver.org" }],
 };
@@ -19,7 +12,7 @@ class PeerConnection {
 
   constructor(
     id: string,
-    handleVideoCallback: (stream: MediaStream) => void,
+    handleVideoCallback: (stream: MediaStream, connId: string) => void,
     socket?: Socket
   ) {
     this.targetSocketId = id;
@@ -35,7 +28,7 @@ class PeerConnection {
     this.connection.ontrack = ({ track, streams }) => {
       console.log("Incoming connection");
       track.onunmute = () => {
-        handleVideoCallback(streams[0]);
+        handleVideoCallback(streams[0], this.targetSocketId);
       };
     };
   }
@@ -51,7 +44,8 @@ class PeerConnection {
   };
 
   iceCandidateHandler = ({ candidate }: any) => {
-    this.socket && this.socket.emit("ice-candidate", JSON.stringify(candidate));
+    this.socket && this.socket.emit("ice-candidate", candidate);
+    // this.connection.addIceCandidate(candidate);
   };
 }
 
@@ -59,8 +53,8 @@ class WebRTCService {
   socket: Socket;
   connections: Map<string, PeerConnection>;
   makingOfferInProgress: boolean;
-  handleRemoteConnectionCallback: (stream: MediaStream) => void;
-  tracks: any[];
+  handleRemoteConnectionCallback: (stream: MediaStream, connId: string) => void;
+  stream: MediaStream | null;
 
   constructor() {
     this.socket = io();
@@ -68,7 +62,11 @@ class WebRTCService {
     this.connections = new Map();
     this.handleRemoteConnectionCallback = null;
     this.socket.on("connect", this.createListeners);
-    this.tracks = [];
+    this.stream = null;
+  }
+
+  setStream(stream: MediaStream) {
+    this.stream = stream;
   }
 
   getPeerConnection(socketId: string) {
@@ -76,6 +74,7 @@ class WebRTCService {
     const connectionExist = this.connections.has(socketId);
     if (!connectionExist) {
       peer = new PeerConnection(socketId, this.handleRemoteConnectionCallback);
+
       this.connections.set(socketId, peer);
       return peer;
     } else {
@@ -83,7 +82,12 @@ class WebRTCService {
     }
   }
 
-  createListeners = () => {
+  createListeners = async () => {
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    });
+
     this.socket.on("new-user", (socketId) => {
       this.startNewConnection(socketId);
     });
@@ -97,15 +101,17 @@ class WebRTCService {
     // only for callee
     this.socket.on("sdp-offer", async ({ description, socketId }) => {
       const peer = this.getPeerConnection(socketId);
-      peer.connection.addTrack(
-        this.tracks.at(-1).track,
-        this.tracks.at(-1).stream
-      );
+
+      if (this.stream) {
+        for (const track of this.stream.getTracks()) {
+          peer.connection.addTrack(track, this.stream);
+        }
+      }
+
       peer.connection.setRemoteDescription(description);
       const answer = await peer.connection.createAnswer();
       await peer.connection.setLocalDescription(answer);
       this.socket.emit("sdp-answer", { answer: answer, target: socketId });
-      peer.connection.addTrack(this.tracks[0].track, this.tracks[0].stream);
     });
 
     this.socket.on("sdp-answer", ({ description, socketId }) => {
@@ -117,16 +123,15 @@ class WebRTCService {
   startNewConnection = (id: string) => {
     const newConnection = new PeerConnection(
       id,
-      (stream) => {
-        console.log("stream", stream);
-      },
+      this.handleRemoteConnectionCallback,
       this.socket
     );
     this.connections.set(id, newConnection);
-    newConnection.connection.addTrack(
-      this.tracks.at(-1).track,
-      this.tracks.at(-1).stream
-    );
+    if (this.stream) {
+      for (const track of this.stream.getTracks()) {
+        newConnection.connection.addTrack(track, this.stream);
+      }
+    }
     newConnection.sendSdpOffer();
   };
 
@@ -138,13 +143,6 @@ class WebRTCService {
   joinRoom = (roomId: string) => {
     const result = this.socket.emitWithAck("join-room", roomId);
     return result;
-  };
-
-  addTrack = (track: MediaStreamTrack, stream: MediaStream) => {
-    this.tracks.push({ track: track, stream: stream });
-    // for (const peer of Array.from(this.connections.values())) {
-    //   peer.connection.addTrack(track, stream);
-    // }
   };
 }
 

@@ -164,7 +164,7 @@ class IOServer {
     });
 
     socket.on("ice-candidate", (data: string) => {
-      const iceCandidate = JSON.parse(data);
+      const iceCandidate = data;
       const roomId = this.roomMapping.get(socket.id);
 
       roomId &&

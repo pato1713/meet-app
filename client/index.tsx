@@ -9,12 +9,12 @@ const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 root.render(
-  <StrictMode>
-    <GlobalStyle />
-    <RoutingProvider>
-      <ConnectionProvider>
+  <ConnectionProvider>
+    <StrictMode>
+      <GlobalStyle />
+      <RoutingProvider>
         <App />
-      </ConnectionProvider>
-    </RoutingProvider>
-  </StrictMode>
+      </RoutingProvider>
+    </StrictMode>
+  </ConnectionProvider>
 );
