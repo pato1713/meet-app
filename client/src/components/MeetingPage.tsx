@@ -1,20 +1,36 @@
 import React, { useContext, useEffect, useRef } from "react";
 import { ConnectionContext } from "../providers/ConnectionProvider";
+import styled from "styled-components";
+import { HEADER_SIZE } from "../../GlobalStyle";
+
+const MeetinPageContainerStyled = styled.div`
+  height: 100%;
+  & > div {
+    height: inherit;
+    display: grid;
+    grid-template: auto auto / auto auto;
+    justify-items: center;
+  }
+
+  video {
+    width: 100% !important;
+    height: calc((100vh - ${HEADER_SIZE}) / 2) !important;
+  }
+`;
 
 const MeetingPage: React.FC = () => {
   const ownVideo = useRef<HTMLVideoElement>();
   const videoContainer = useRef<HTMLDivElement>();
-  const remoteVideosContainer = useRef<HTMLDivElement>();
-  const { roomId, webRTCService } = useContext(ConnectionContext);
+  const { webRTCService } = useContext(ConnectionContext);
 
   useEffect(() => {
     webRTCService.handleRemoteConnectionCallback = (stream, connId) => {
-      if (!remoteVideosContainer.current) {
+      if (!videoContainer.current) {
         return;
       }
 
       let nodeAlreadyExist = false;
-      for (const node of Array.from(remoteVideosContainer.current.children)) {
+      for (const node of Array.from(videoContainer.current.children)) {
         const videoElem = node as HTMLVideoElement;
         if (videoElem.id == connId) {
           nodeAlreadyExist = true;
@@ -28,7 +44,7 @@ const MeetingPage: React.FC = () => {
         newVideo.id = connId;
         newVideo.autoplay = true;
         newVideo.srcObject = stream;
-        remoteVideosContainer.current.append(newVideo);
+        videoContainer.current.append(newVideo);
       }
     };
   }, []);
@@ -41,15 +57,11 @@ const MeetingPage: React.FC = () => {
   }, [webRTCService.stream]);
 
   return (
-    <div>
-      <div>{roomId}</div>
+    <MeetinPageContainerStyled>
       <div ref={videoContainer}>
-        <div className="your-video">
-          <video ref={ownVideo} autoPlay />
-        </div>
-        <div className="remote-videos" ref={remoteVideosContainer}></div>
+        <video ref={ownVideo} autoPlay />
       </div>
-    </div>
+    </MeetinPageContainerStyled>
   );
 };
 

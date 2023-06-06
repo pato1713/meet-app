@@ -18,7 +18,6 @@ const ConnectionProvider: React.FC<React.PropsWithChildren> = ({
 
   const setNewRoomId = (newRoomId: string) => {
     setRoomId(newRoomId);
-    // webRTCService.startConnection();
   };
 
   return (

@@ -2,6 +2,30 @@ import React, { ChangeEvent, useContext, useState } from "react";
 import { RoutingContext } from "../providers/RoutingProvider";
 import axios from "axios";
 import { ConnectionContext } from "../providers/ConnectionProvider";
+import Button from "./Button";
+import styled from "styled-components";
+import { GLOBAL_PRIMARY } from "../../GlobalStyle";
+
+const StyledMainPageContainer = styled.div`
+  height: 100%;
+  display: flex;
+  justify-content: space-evenly;
+
+  & > div {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    :first-child {
+      border-right: 3px ${GLOBAL_PRIMARY} solid;
+    }
+    :last-child {
+      border-left: 3px ${GLOBAL_PRIMARY} solid;
+    }
+  }
+`;
 
 const MainPage = () => {
   const [inputValue, setInputValue] = useState<string>();
@@ -30,17 +54,14 @@ const MainPage = () => {
   };
 
   return (
-    <div>
+    <StyledMainPageContainer>
       <div className="left">
-        <div>
-          <button
-            onClick={() => {
-              createRoomHandler();
-            }}
-          >
-            Create room
-          </button>
-        </div>
+        <Button
+          text="Create room"
+          onClick={() => {
+            createRoomHandler();
+          }}
+        />
       </div>
       <div className="right">
         <div>
@@ -49,10 +70,14 @@ const MainPage = () => {
             onChange={onInputChange}
             placeholder="room-id"
           />
-          <button onClick={joinRoomHandler}>Join room</button>
+          <Button
+            text="Join room"
+            onClick={joinRoomHandler}
+            disabled={!inputValue}
+          />
         </div>
       </div>
-    </div>
+    </StyledMainPageContainer>
   );
 };
 
