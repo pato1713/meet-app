@@ -1,28 +1,33 @@
 import React from "react";
-import Header from "./src/components/Header";
+import Header from "./src/components/Header/Header";
 import MeetingPage from "./src/components/MeetingPage";
 import Route from "./src/components/Route";
-import MainPage from "./src/components/MainPage";
-import styled from "styled-components";
+import Main from "./src/pages/Main";
+import { styled } from "@mui/material";
 import { HEADER_SIZE } from "./GlobalStyle";
 
-const MainContent = styled.div`
-  margin-top: ${HEADER_SIZE};
-  height: calc(100vh - ${HEADER_SIZE});
-`;
+const RoutingContextWrappper = styled("div")(({ theme }) => ({
+  padding: "10px",
+  background: theme.palette.secondary.light,
+  height: `calc(100vh - ${HEADER_SIZE} - 24px)`,
+  display: "flex",
+  alignContent: "center",
+  justifyContent: "center",
+}));
 
 const App = () => {
   return (
     <div>
       <Header />
-      <MainContent>
+
+      <RoutingContextWrappper>
         <Route path="/">
-          <MainPage />
+          <Main />
         </Route>
         <Route path="/meeting">
           <MeetingPage />
         </Route>
-      </MainContent>
+      </RoutingContextWrappper>
     </div>
   );
 };
