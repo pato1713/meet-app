@@ -1,10 +1,10 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { ConnectionContext } from "../providers/ConnectionProvider";
-import styled from "styled-components";
 import { HEADER_SIZE } from "../../GlobalStyle";
+import { Box, Card, CardMedia, Typography, styled } from "@mui/material";
+import VideoCard from "./VideoCard";
 
-const MeetinPageContainerStyled = styled.div`
-  height: 100%;
+/* height: 100%;
   & > div {
     height: inherit;
     display: grid;
@@ -15,53 +15,37 @@ const MeetinPageContainerStyled = styled.div`
   video {
     width: 100% !important;
     height: calc((100vh - ${HEADER_SIZE}) / 2) !important;
-  }
-`;
+  } */
+
+const StyledBox = styled(Box)(({ theme }) => ({
+  display: "flex",
+  // flexDirection: "row",
+  // height: "500px",
+  // flexWrap: "wrap",
+}));
 
 const MeetingPage: React.FC = () => {
-  const ownVideo = useRef<HTMLVideoElement>();
-  const videoContainer = useRef<HTMLDivElement>();
   const { webRTCService } = useContext(ConnectionContext);
+  const [remoteVideos, setRemoteVideos] = useState<
+    Record<string, MediaProvider>
+  >({});
 
   useEffect(() => {
     webRTCService.handleRemoteConnectionCallback = (stream, connId) => {
-      if (!videoContainer.current) {
-        return;
-      }
-
-      let nodeAlreadyExist = false;
-      for (const node of Array.from(videoContainer.current.children)) {
-        const videoElem = node as HTMLVideoElement;
-        if (videoElem.id == connId) {
-          nodeAlreadyExist = true;
-          videoElem.srcObject = stream;
-          break;
-        }
-      }
-
-      if (!nodeAlreadyExist) {
-        const newVideo = document.createElement("video");
-        newVideo.id = connId;
-        newVideo.autoplay = true;
-        newVideo.srcObject = stream;
-        videoContainer.current.append(newVideo);
-      }
+      setRemoteVideos((prevVideos) => ({ ...prevVideos, [connId]: stream }));
     };
   }, []);
 
-  useEffect(() => {
-    if (webRTCService.stream) {
-      ownVideo.current.muted = true;
-      ownVideo.current.srcObject = webRTCService.stream;
-    }
-  }, [webRTCService.stream]);
-
   return (
-    <MeetinPageContainerStyled>
-      <div ref={videoContainer}>
-        <video ref={ownVideo} autoPlay />
-      </div>
-    </MeetinPageContainerStyled>
+    <StyledBox>
+      {webRTCService.stream && (
+        <VideoCard muted mediaProvider={webRTCService.stream} />
+      )}
+
+      {Object.entries(remoteVideos).map(([id, stream]) => (
+        <VideoCard key={id} mediaProvider={stream} />
+      ))}
+    </StyledBox>
   );
 };
 

@@ -1,7 +1,6 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { v4 } from "uuid";
-// import wrtc from "wrtc";
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stunserver.org" }],
@@ -104,13 +103,11 @@ export class ChatRoom {
 
 class IOServer {
   server: Server;
-  rooms: Map<string, ChatRoom>;
   roomMapping: Map<string, string>;
 
   constructor(httpServer: HttpServer) {
     this.server = new Server(httpServer);
     this.roomMapping = new Map<string, string>();
-    this.rooms = new Map();
 
     // logging
     this.server.of("/").adapter.on("create-room", (room) => {
