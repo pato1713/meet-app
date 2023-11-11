@@ -1,27 +1,34 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { ConnectionContext } from "../providers/ConnectionProvider";
-import { HEADER_SIZE } from "../../GlobalStyle";
-import { Box, Card, CardMedia, Typography, styled } from "@mui/material";
+import { Box, styled } from "@mui/material";
 import VideoCard from "./VideoCard";
 
-/* height: 100%;
-  & > div {
-    height: inherit;
-    display: grid;
-    grid-template: auto auto / auto auto;
-    justify-items: center;
-  }
-
-  video {
-    width: 100% !important;
-    height: calc((100vh - ${HEADER_SIZE}) / 2) !important;
-  } */
-
 const StyledBox = styled(Box)(({ theme }) => ({
-  display: "flex",
-  // flexDirection: "row",
-  // height: "500px",
-  // flexWrap: "wrap",
+  display: "grid",
+  gridTemplateColumns: "auto auto",
+  placeContent: "center center",
+
+  "&.applyGap": {
+    gap: "0.15rem 0.5rem",
+  },
+}));
+
+const OwnVideoBox = styled(Box)(({ theme }) => ({
+  maxHeight: "85vh",
+  maxWidth: "1200px",
+  "&.inCorner": {
+    display: "flex",
+    width: "30vw",
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    zIndex: 2,
+  },
+}));
+
+const RemoteVideoBox = styled(Box)(({ theme }) => ({
+  maxHeight: "85vh",
+  maxWidth: "1200px",
 }));
 
 const MeetingPage: React.FC = () => {
@@ -36,15 +43,43 @@ const MeetingPage: React.FC = () => {
     };
   }, []);
 
-  return (
-    <StyledBox>
-      {webRTCService.stream && (
-        <VideoCard muted mediaProvider={webRTCService.stream} />
-      )}
+  const calculateWidthFromVideosNo = () => {
+    switch (Object.keys(remoteVideos).length) {
+      case 0:
+      case 1:
+        return "90vw";
+      case 2:
+      case 3:
+        return "45vw";
+    }
+  };
 
+  const applyGap = Object.keys(remoteVideos).length > 1;
+  const isOwnVideoInCorner =
+    Object.keys(remoteVideos).length && Object.keys(remoteVideos).length !== 3;
+
+  return (
+    <StyledBox className={applyGap ? "applyGap" : ""}>
       {Object.entries(remoteVideos).map(([id, stream]) => (
-        <VideoCard key={id} mediaProvider={stream} />
+        <RemoteVideoBox sx={{ width: calculateWidthFromVideosNo() }}>
+          <VideoCard key={id} mediaProvider={stream} />
+        </RemoteVideoBox>
       ))}
+
+      <OwnVideoBox
+        className={isOwnVideoInCorner && "inCorner"}
+        style={
+          !isOwnVideoInCorner
+            ? {
+                width: calculateWidthFromVideosNo(),
+              }
+            : {}
+        }
+      >
+        {webRTCService.stream && (
+          <VideoCard muted mediaProvider={webRTCService.stream} />
+        )}
+      </OwnVideoBox>
     </StyledBox>
   );
 };

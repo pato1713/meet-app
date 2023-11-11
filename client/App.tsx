@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useContext } from "react";
 import Header from "./src/components/Header/Header";
 import MeetingPage from "./src/components/MeetingPage";
 import Route from "./src/components/Route";
 import Main from "./src/pages/Main";
 import { styled } from "@mui/material";
 import { HEADER_SIZE } from "./GlobalStyle";
+import { ConnectionContext } from "./src/providers/ConnectionProvider";
+import { RoutingContext } from "./src/providers/RoutingProvider";
 
 const RoutingContextWrappper = styled("div")(({ theme }) => ({
   padding: "10px",
@@ -16,6 +18,11 @@ const RoutingContextWrappper = styled("div")(({ theme }) => ({
 }));
 
 const App = () => {
+  const { roomId } = useContext(ConnectionContext);
+  const { navigate } = useContext(RoutingContext);
+
+  if (roomId) navigate("/meeting");
+
   return (
     <div>
       <Header />
