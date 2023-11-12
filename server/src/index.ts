@@ -18,7 +18,7 @@ app.get("*", (req, res) => {
 const dev = process.env.NODE_ENV === "development";
 
 if (dev) {
-  const server = app.listen(process.env.SERVER_PORT || 3001);
+  const server = app.listen(process.env.PORT || 3001);
   new SocketIOServer(server);
 } else {
   const server = app.listen(
