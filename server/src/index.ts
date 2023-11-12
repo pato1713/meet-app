@@ -18,9 +18,6 @@ app.get("*", (req, res) => {
 const dev = process.env.NODE_ENV === "development";
 
 if (dev) {
-  const server = app.listen(process.env.PORT || 3001);
-  new SocketIOServer(server);
-} else {
   const server = app.listen(
     Number(process.env.SERVER_PORT),
     process.env.SERVER_IP,
@@ -30,5 +27,8 @@ if (dev) {
       );
     }
   );
+  new SocketIOServer(server);
+} else {
+  const server = app.listen(process.env.PORT || 3001);
   new SocketIOServer(server);
 }
