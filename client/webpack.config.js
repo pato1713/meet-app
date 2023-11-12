@@ -16,20 +16,15 @@ module.exports = {
     port: process.env.CLIENT_PORT,
     proxy: {
       "/api": {
-        target: `http://${process.env.SERVER_CONTAINER_NAME}:${process.env.SERVER_PORT}`,
+        target: `http://${process.env.SERVER_IP}:${process.env.SERVER_PORT}`,
         pathRewrite: { "^/api": "" },
       },
       "/socket.io": {
-        target: `http://${process.env.SERVER_CONTAINER_NAME}:${process.env.SERVER_PORT}`,
+        target: `http://${process.env.SERVER_IP}:${process.env.SERVER_PORT}`,
         ws: true,
       },
     },
   },
-  // // to make hot reloading work with docker
-  // watchOptions: {
-  //   aggregateTimeout: 200,
-  //   poll: true,
-  // },
   devtool: "source-map",
   module: {
     rules: [

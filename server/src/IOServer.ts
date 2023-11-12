@@ -127,7 +127,7 @@ class IOServer {
 
   onNewSocketConnection(socket: Socket) {
     socket.on("create-room", (callback) => {
-      const newRoomId = v4().replace(/-/g, "");
+      const newRoomId = v4().replace(/-/g, "").slice(0, 5);
 
       //join room
       socket.join(newRoomId);
