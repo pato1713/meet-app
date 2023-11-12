@@ -14,14 +14,10 @@ app.get("*", (req, res) => {
     path.resolve(__dirname, "../..", "client", "dist", "index.html")
   );
 });
-const server = app.listen(
-  Number(process.env.SERVER_PORT),
-  process.env.SERVER_IP,
-  () => {
-    console.log(
-      `⚡️[server]: Server is running at http://${process.env.SERVER_IP}:${process.env.SERVER_PORT}`
-    );
-  }
-);
+const server = app.listen(process.env.SERVER_PORT || process.env.PORT, () => {
+  console.log(
+    `⚡️[server]: Server is running at http://${process.env.SERVER_IP}:${process.env.SERVER_PORT}`
+  );
+});
 
 const ioServer = new SocketIOServer(server);
